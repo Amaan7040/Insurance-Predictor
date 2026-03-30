@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insurance Premium Predictor</title>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #141720;
+      --surface2: #1c2030;
+      --border: #2a2f45;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --accent-glow: rgba(108, 99, 255, 0.25);
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #7b8299;
+      --input-bg: #0f1117;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background mesh */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(108,99,255,.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(167,139,250,.12) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 1;
+      padding: 2.5rem 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      margin-bottom: .5rem;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-top: .3rem;
+    }
+
+    /* Status pill */
+    .status-bar {
+      display: flex;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    #status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .78rem;
+      padding: .3rem .85rem;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      transition: all .4s;
+    }
+
+    #status-pill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background .4s;
+    }
+
+    #status-pill.online { color: var(--green); border-color: rgba(52,211,153,.3); }
+    #status-pill.online .dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    #status-pill.offline { color: var(--red); border-color: rgba(248,113,113,.3); }
+    #status-pill.offline .dot { background: var(--red); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+
+    /* Main layout */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.8rem;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .card-title span.icon {
+      font-size: 1.1rem;
+    }
+
+    /* Form grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.1rem;
+    }
+
+    @media (max-width: 520px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    label sup { color: var(--red); margin-left: 2px; }
+
+    input, select {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: .9rem;
+      padding: .6rem .85rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237b8299'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      padding-right: 2rem;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    input.field-error, select.field-error {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(248,113,113,.2);
+    }
+
+    input::placeholder { color: #3d4460; }
+
+    /* toggle switch for smoker */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-top: .1rem;
+    }
+
+    .switch {
+      position: relative;
+      width: 46px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      transition: .3s;
+    }
+
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 4px; bottom: 4px;
+      background: #fff;
+      border-radius: 50%;
+      transition: .3s;
+    }
+
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(22px); }
+
+    .toggle-label { font-size: .9rem; color: var(--text); }
+
+    .hint { font-size: .72rem; color: var(--muted); margin-top: .15rem; }
+
+    /* Derived fields preview (now 4 columns) */
+    .derived-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .7rem;
+      margin-top: 1.4rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 520px) {
+      .derived-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .derived-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .65rem .8rem;
+    }
+
+    .derived-item .d-label {
+      font-size: .68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .3rem;
+    }
+
+    .derived-item .d-value {
+      font-size: .92rem;
+      font-weight: 600;
+      color: var(--accent2);
+    }
+
+    /* Submit button */
+    .submit-btn {
+      margin-top: 1.4rem;
+      width: 100%;
+      padding: .85rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn:hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 28px var(--accent-glow); }
+    .submit-btn:active { transform: scale(.98); }
+    .submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .btn-inner { display: flex; align-items: center; justify-content: center; gap: .5rem; }
+
+    /* spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    .loading .spinner { display: block; }
+    .loading .btn-text { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Result panel */
+    #result-panel {
+      display: none;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    #result-panel.visible { display: flex; }
+
+    /* prediction card */
+    .prediction-badge {
+      text-align: center;
+      padding: 1.8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .prediction-badge::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: .06;
+      background: radial-gradient(circle at 50% 50%, var(--badge-color, var(--accent)), transparent 70%);
+    }
+
+    .badge-label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+
+    .badge-value {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: .4rem;
+    }
+
+    .badge-conf {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    .badge-conf span {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* probability bars */
+    .prob-bars { display: flex; flex-direction: column; gap: .85rem; }
+
+    .prob-row { display: flex; flex-direction: column; gap: .35rem; }
+
+    .prob-header { display: flex; justify-content: space-between; font-size: .8rem; }
+
+    .prob-class { font-weight: 600; }
+
+    .prob-pct { color: var(--muted); }
+
+    .bar-track {
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 8px;
+      width: 0%;
+      transition: width 1s cubic-bezier(.16,1,.3,1);
+    }
+
+    /* derived info card */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+
+    .info-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .6rem .8rem;
+    }
+
+    .info-chip .ic-label {
+      font-size: .68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .info-chip .ic-val {
+      font-size: .88rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: .2rem;
+    }
+
+    /* Error toast */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #2d1a1a;
+      border: 1px solid rgba(248,113,113,.4);
+      color: var(--red);
+      padding: .75rem 1.5rem;
+      border-radius: 10px;
+      font-size: .88rem;
+      z-index: 999;
+      transition: transform .35s cubic-bezier(.16,1,.3,1);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      max-width: 90vw;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Footer */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--muted);
+      font-size: .78rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer .version { color: var(--accent2); font-weight: 600; }
+
+    /* datalist helper */
+    datalist { display: none; }
+
+    /* risk chip colours */
+    .risk-low  { color: var(--green); }
+    .risk-medium { color: var(--yellow); }
+    .risk-high { color: var(--red); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">🛡️</div>
+    <h1>Insurance Premium Predictor</h1>
+  </div>
+  <p class="subtitle">ML-powered premium classification · FastAPI Backend</p>
+  <div class="status-bar">
+    <div id="status-pill">
+      <span class="dot"></span>
+      <span id="status-text">Checking backend…</span>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<main>
+  <!-- LEFT: FORM -->
+  <section>
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> User Information</div>
+
+      <form id="predict-form" novalidate>
+        <div class="form-grid">
+          <!-- Age -->
+          <div class="field">
+            <label>Age <sup>*</sup></label>
+            <input type="number" id="age" placeholder="e.g. 32" min="1" max="119" required />
+          </div>
+          <!-- Income -->
+          <div class="field">
+            <label>Annual Income (LPA) <sup>*</sup></label>
+            <input type="number" id="income_lpa" placeholder="e.g. 12.5" step="0.1" min="0.1" required />
+          </div>
+          <!-- Weight -->
+          <div class="field">
+            <label>Weight (kg) <sup>*</sup></label>
+            <input type="number" id="weight" placeholder="e.g. 72" step="0.1" min="1" required />
+          </div>
+          <!-- Height -->
+          <div class="field">
+            <label>Height (m) <sup>*</sup></label>
+            <input type="number" id="height" placeholder="e.g. 1.75" step="0.01" min="0.5" max="2.49" required />
+            <span class="hint">Enter in metres, e.g. 1.75</span>
+          </div>
+          <!-- Occupation -->
+          <div class="field">
+            <label>Occupation <sup>*</sup></label>
+            <select id="occupation" required>
+              <option value="" disabled selected>Select occupation…</option>
+              <option value="retired">Retired</option>
+              <option value="freelancer">Freelancer</option>
+              <option value="student">Student</option>
+              <option value="government_job">Government Job</option>
+              <option value="business_owner">Business Owner</option>
+              <option value="unemployed">Unemployed</option>
+              <option value="private_job">Private Job</option>
+            </select>
+          </div>
+          <!-- City -->
+          <div class="field">
+            <label>City <sup>*</sup></label>
+            <input type="text" id="city" placeholder="e.g. Mumbai" list="city-list" autocomplete="off" required />
+            <datalist id="city-list">
+              <option>Mumbai</option><option>Delhi</option><option>Bangalore</option>
+              <option>Chennai</option><option>Kolkata</option><option>Hyderabad</option>
+              <option>Pune</option><option>Jaipur</option><option>Chandigarh</option>
+              <option>Indore</option><option>Lucknow</option><option>Patna</option>
+              <option>Ranchi</option><option>Visakhapatnam</option><option>Coimbatore</option>
+              <option>Bhopal</option><option>Nagpur</option><option>Vadodara</option>
+              <option>Surat</option><option>Rajkot</option><option>Jodhpur</option>
+              <option>Raipur</option><option>Amritsar</option><option>Varanasi</option>
+              <option>Agra</option><option>Dehradun</option><option>Mysore</option>
+              <option>Jabalpur</option><option>Guwahati</option><option>Thiruvananthapuram</option>
+              <option>Ludhiana</option><option>Nashik</option><option>Allahabad</option>
+              <option>Udaipur</option><option>Aurangabad</option><option>Hubli</option>
+              <option>Belgaum</option><option>Salem</option><option>Vijayawada</option>
+              <option>Tiruchirappalli</option><option>Bhavnagar</option><option>Gwalior</option>
+              <option>Dhanbad</option><option>Bareilly</option><option>Aligarh</option>
+              <option>Gaya</option><option>Kozhikode</option><option>Warangal</option>
+              <option>Kolhapur</option><option>Bilaspur</option><option>Jalandhar</option>
+              <option>Noida</option><option>Guntur</option><option>Asansol</option>
+              <option>Siliguri</option>
+            </datalist>
+          </div>
+          <!-- Smoker -->
+          <div class="field full">
+            <label>Smoker</label>
+            <div class="toggle-row">
+              <label class="switch">
+                <input type="checkbox" id="smoker" />
+                <span class="slider"></span>
+              </label>
+              <span class="toggle-label" id="smoker-label">No</span>
+            </div>
+          </div>
+        </div><!-- /form-grid -->
+
+        <!-- Derived fields preview (now includes city tier) -->
+        <div class="derived-grid">
+          <div class="derived-item">
+            <div class="d-label">BMI</div>
+            <div class="d-value" id="d-bmi">—</div>
+          </div>
+          <div class="derived-item">
+            <div class="d-label">Age Group</div>
+            <div class="d-value" id="d-age-group">—</div>
+          </div>
+          <div class="derived-item">
+            <div class="d-label">Lifestyle Risk</div>
+            <div class="d-value" id="d-risk">—</div>
+          </div>
+          <div class="derived-item">
+            <div class="d-label">City Tier</div>
+            <div class="d-value" id="d-tier">—</div>
+          </div>
+        </div>
+
+        <button type="button" class="submit-btn" id="submit-btn">
+          <div class="btn-inner">
+            <div class="spinner"></div>
+            <span class="btn-text">⚡ Predict Premium Category</span>
+          </div>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- RIGHT: RESULTS -->
+  <aside>
+    <!-- placeholder -->
+    <div class="card" id="placeholder-card" style="text-align:center; padding: 3rem 1.5rem;">
+      <div style="font-size:3rem; margin-bottom:1rem;">🔮</div>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.6;">
+        Fill in the form and click <strong style="color:var(--text)">Predict</strong> to see your insurance premium category and confidence scores.
+      </p>
+    </div>
+
+    <!-- result panel -->
+    <div id="result-panel">
+      <!-- prediction badge -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="prediction-badge" id="pred-badge">
+          <div class="badge-label">Predicted Category</div>
+          <div class="badge-value" id="pred-value">—</div>
+          <div class="badge-conf">Confidence: <span id="pred-conf">—</span></div>
+        </div>
+      </div>
+
+      <!-- probability bars -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📊</span> Class Probabilities</div>
+        <div class="prob-bars" id="prob-bars"></div>
+      </div>
+
+      <!-- derived info chips -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🔍</span> Computed Risk Factors</div>
+        <div class="info-grid" id="info-grid"></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- Toast -->
+<div id="toast">
+  <span>⚠️</span>
+  <span id="toast-msg">Something went wrong.</span>
+</div>
+
+<!-- Footer with dynamic version -->
+<footer>
+  Powered by <a href="https://fastapi.tiangolo.com" target="_blank">FastAPI</a> &amp; ML Model &nbsp;·&nbsp;
+  <!-- Endpoint: <code style="color:var(--accent2)">http://127.0.0.1:8000/predict</code><br> -->
+  Model version: <span class="version" id="model-version">?</span>
+</footer>
+
+<script>
+  const API_PREDICT = 'http://127.0.0.1:8000/predict';
+  const API_HEALTH  = 'http://127.0.0.1:8000/health';
+
+  // ----- Derived computations (mirrors Python logic) -----
+  function calcBMI(w, h) { return h > 0 ? w / (h * h) : null; }
+
+  function calcLifestyleRisk(smoker, bmi) {
+    if (!bmi) return null;
+    if (smoker && bmi > 30) return 'high';
+    if (smoker || bmi > 27) return 'medium';
+    return 'low';
+  }
+
+  function calcAgeGroup(age) {
+    if (age < 25) return 'young';
+    if (age < 45) return 'adult';
+    if (age < 60) return 'middle_aged';
+    return 'senior';
+  }
+
+  function cityTier(city) {
+    const t1 = ["Mumbai","Delhi","Bangalore","Chennai","Kolkata","Hyderabad","Pune"];
+    const t2 = ["Jaipur","Chandigarh","Indore","Lucknow","Patna","Ranchi","Visakhapatnam",
+      "Coimbatore","Bhopal","Nagpur","Vadodara","Surat","Rajkot","Jodhpur","Raipur",
+      "Amritsar","Varanasi","Agra","Dehradun","Mysore","Jabalpur","Guwahati",
+      "Thiruvananthapuram","Ludhiana","Nashik","Allahabad","Udaipur","Aurangabad",
+      "Hubli","Belgaum","Salem","Vijayawada","Tiruchirappalli","Bhavnagar","Gwalior",
+      "Dhanbad","Bareilly","Aligarh","Gaya","Kozhikode","Warangal","Kolhapur",
+      "Bilaspur","Jalandhar","Noida","Guntur","Asansol","Siliguri"];
+    const norm = city.trim().replace(/\b\w/g, c => c.toUpperCase());
+    if (t1.includes(norm)) return 1;
+    if (t2.includes(norm)) return 2;
+    return 3;
+  }
+
+  // ----- Live derived preview (now includes city tier) -----
+  function updateDerived() {
+    const age = parseFloat(document.getElementById('age').value);
+    const w   = parseFloat(document.getElementById('weight').value);
+    const h   = parseFloat(document.getElementById('height').value);
+    const smk = document.getElementById('smoker').checked;
+    const cityInput = document.getElementById('city').value.trim();
+
+    const bmi = (!isNaN(w) && !isNaN(h)) ? calcBMI(w, h) : null;
+    const risk = bmi ? calcLifestyleRisk(smk, bmi) : null;
+    const ag   = !isNaN(age) ? calcAgeGroup(age) : null;
+    const tier = cityInput ? cityTier(cityInput) : null;
+
+    document.getElementById('d-bmi').textContent = bmi ? bmi.toFixed(1) : '—';
+
+    const ageEl = document.getElementById('d-age-group');
+    ageEl.textContent = ag ? ag.replace('_', ' ') : '—';
+
+    const riskEl = document.getElementById('d-risk');
+    riskEl.textContent = risk || '—';
+    riskEl.className = `d-value${risk ? ' risk-'+risk : ''}`;
+
+    document.getElementById('d-tier').textContent = tier ? 'Tier '+tier : '—';
+  }
+
+  ['age','weight','height','city'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', updateDerived);
+    el.addEventListener('input', () => el.classList.remove('field-error'));
+  });
+
+  document.getElementById('income_lpa').addEventListener('input', function() {
+    this.classList.remove('field-error');
+  });
+
+  document.getElementById('occupation').addEventListener('change', function() {
+    this.classList.remove('field-error');
+  });
+
+  // smoker toggle label
+  document.getElementById('smoker').addEventListener('change', function() {
+    document.getElementById('smoker-label').textContent = this.checked ? 'Yes' : 'No';
+    updateDerived();
+  });
+
+  // ----- Health check with version update -----
+  async function checkHealth() {
+    const pill = document.getElementById('status-pill');
+    const txt  = document.getElementById('status-text');
+    const versionSpan = document.getElementById('model-version');
+    try {
+      const res = await fetch(API_HEALTH, { signal: AbortSignal.timeout(4000) });
+      const data = await res.json();
+      pill.className = 'online';
+      const version = data.version || '?';
+      txt.textContent = `Backend online · Model v${version}`;
+      versionSpan.textContent = version;
+    } catch {
+      pill.className = 'offline';
+      txt.textContent = 'Backend offline';
+      versionSpan.textContent = '?';
+    }
+  }
+
+  checkHealth();
+  setInterval(checkHealth, 20000);
+
+  // ----- Toast -----
+  let toastTimer;
+  function showToast(msg) {
+    clearTimeout(toastTimer);
+    document.getElementById('toast-msg').textContent = msg;
+    document.getElementById('toast').classList.add('show');
+    toastTimer = setTimeout(() => document.getElementById('toast').classList.remove('show'), 4000);
+  }
+
+  // ----- Category colours -----
+  const CAT_COLOR = {
+    Low:    { color: '#34d399', bar: '#34d399' },
+    Medium: { color: '#fbbf24', bar: '#fbbf24' },
+    High:   { color: '#f87171', bar: '#f87171' },
+  };
+
+  function getCatStyle(cat) {
+    const k = Object.keys(CAT_COLOR).find(k => cat.toLowerCase().includes(k.toLowerCase()));
+    return k ? CAT_COLOR[k] : { color: '#a78bfa', bar: '#a78bfa' };
+  }
+
+  // ----- Render results -----
+  function renderResult(data, userSnap) {
+    document.getElementById('placeholder-card').style.display = 'none';
+    const panel = document.getElementById('result-panel');
+    panel.classList.add('visible');
+
+    const cat   = data.predicted_category;
+    const conf  = data.confidence;
+    const probs = data.class_probabilities;
+    const style = getCatStyle(cat);
+
+    // badge
+    const badge = document.getElementById('pred-badge');
+    badge.style.setProperty('--badge-color', style.color);
+    document.getElementById('pred-value').textContent = cat;
+    document.getElementById('pred-value').style.color = style.color;
+    document.getElementById('pred-value').style.textShadow = `0 0 30px ${style.color}55`;
+    document.getElementById('pred-conf').textContent = (conf * 100).toFixed(1) + '%';
+
+    // bars
+    const barsEl = document.getElementById('prob-bars');
+    barsEl.innerHTML = '';
+    Object.entries(probs)
+      .sort((a,b) => b[1] - a[1])
+      .forEach(([cls, pct]) => {
+        const s = getCatStyle(cls);
+        const row = document.createElement('div');
+        row.className = 'prob-row';
+        row.innerHTML = `
+          <div class="prob-header">
+            <span class="prob-class" style="color:${s.color}">${cls}</span>
+            <span class="prob-pct">${(pct*100).toFixed(1)}%</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="background:${s.bar}" data-w="${(pct*100).toFixed(2)}"></div>
+          </div>`;
+        barsEl.appendChild(row);
+      });
+
+    // animate bars next frame
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.bar-fill').forEach(el => {
+        el.style.width = el.dataset.w + '%';
+      });
+    });
+
+    // info chips
+    const grid = document.getElementById('info-grid');
+    const w = parseFloat(document.getElementById('weight').value);
+    const h = parseFloat(document.getElementById('height').value);
+    const bmi = calcBMI(w, h);
+    const smk = document.getElementById('smoker').checked;
+    const age = parseInt(document.getElementById('age').value);
+    const city = document.getElementById('city').value;
+
+    grid.innerHTML = `
+      <div class="info-chip">
+        <div class="ic-label">BMI</div>
+        <div class="ic-val">${bmi ? bmi.toFixed(2) : '—'}</div>
+      </div>
+      <div class="info-chip">
+        <div class="ic-label">Age Group</div>
+        <div class="ic-val">${calcAgeGroup(age).replace('_',' ')}</div>
+      </div>
+      <div class="info-chip">
+        <div class="ic-label">Lifestyle Risk</div>
+        <div class="ic-val">${bmi ? calcLifestyleRisk(smk, bmi) : '—'}</div>
+      </div>
+      <div class="info-chip">
+        <div class="ic-label">City Tier</div>
+        <div class="ic-val">Tier ${cityTier(city)}</div>
+      </div>
+    `;
+  }
+
+  // ----- Clear field error highlights -----
+  function clearFieldErrors() {
+    ['age','weight','height','income_lpa','city','occupation'].forEach(id => {
+      document.getElementById(id).classList.remove('field-error');
+    });
+  }
+
+  // ----- Form submit -----
+  document.getElementById('submit-btn').addEventListener('click', async function() {
+    clearFieldErrors();
+
+    const ageEl        = document.getElementById('age');
+    const weightEl     = document.getElementById('weight');
+    const heightEl     = document.getElementById('height');
+    const incomeEl     = document.getElementById('income_lpa');
+    const cityEl       = document.getElementById('city');
+    const occupationEl = document.getElementById('occupation');
+
+    const age        = parseFloat(ageEl.value);
+    const weight     = parseFloat(weightEl.value);
+    const height     = parseFloat(heightEl.value);
+    const income_lpa = parseFloat(incomeEl.value);
+    const smoker     = document.getElementById('smoker').checked;
+    const city       = cityEl.value.trim();
+    const occupation = occupationEl.value;
+
+    // per-field validation with visual highlight
+    let hasError = false;
+    if (isNaN(age) || ageEl.value === '') { ageEl.classList.add('field-error'); hasError = true; }
+    if (isNaN(weight) || weightEl.value === '') { weightEl.classList.add('field-error'); hasError = true; }
+    if (isNaN(height) || heightEl.value === '') { heightEl.classList.add('field-error'); hasError = true; }
+    if (isNaN(income_lpa) || incomeEl.value === '') { incomeEl.classList.add('field-error'); hasError = true; }
+    if (!city) { cityEl.classList.add('field-error'); hasError = true; }
+    if (!occupation) { occupationEl.classList.add('field-error'); hasError = true; }
+
+    if (hasError) {
+      showToast('Please fill in all required fields (highlighted in red).');
+      return;
+    }
+
+    if (height > 2.49 || height < 0.5) {
+      heightEl.classList.add('field-error');
+      showToast('Height must be between 0.5 m and 2.49 m.');
+      return;
+    }
+
+    const payload = { age, weight, height, income_lpa, smoker, city, occupation };
+
+    // loading state
+    const btn = document.getElementById('submit-btn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(API_PREDICT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        let errorDetail = `Server error ${res.status}`;
+        try {
+          const err = await res.json();
+          errorDetail += `: ${JSON.stringify(err).slice(0, 100)}`;
+        } catch {
+          // ignore
+        }
+        showToast(errorDetail);
+        return;
+      }
+
+      const data = await res.json();
+      // backend may wrap under 'response' key
+      const result = data.response ?? data;
+      renderResult(result, payload);
+
+    } catch (err) {
+      showToast('Could not reach the backend. Is it running on port 8000?');
+      console.error(err);
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

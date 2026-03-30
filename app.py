@@ -1,15 +1,21 @@
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from schema.user_input import UserInput
 from schema.prediction_response import PredictionResponse
 from model.predict import predict_output, model, MODEL_VERSION
+import os
 
 app = FastAPI()
 
 # human readable       
 @app.get('/')
 def home():
-    return {'message':'Insurance Premium Prediction API'}
+    html_path = "frontend.html"
+    if os.path.exists(html_path):
+        return FileResponse(html_path, media_type="text/html")
+    else:
+       return {'message':'Insurance Premium Prediction API'}
 
 # machine readable
 @app.get('/health')
